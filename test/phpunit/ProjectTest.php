@@ -73,6 +73,62 @@ class ProjectTest extends CommonClassTest
 	}
 
 	/**
+	 * testProjectGetNextNumRef
+	 *
+	 * Ensure the numbering module exposed via Project::getNextNumRef()
+	 * returns a valid string reference (mirrors the behaviour expected
+	 * by Project::create() when ref is set to 'auto').
+	 *
+	 * @return	void
+	 */
+	public function testProjectGetNextNumRef()
+	{
+		global $conf,$user,$langs,$db;
+		$conf = $this->savconf;
+		$user = $this->savuser;
+		$langs = $this->savlangs;
+		$db = $this->savdb;
+
+		$localobject = new Project($db);
+		$ref = $localobject->getNextNumRef(null);
+
+		print __METHOD__." ref=".$ref."\n";
+		$this->assertIsString($ref);
+		$this->assertNotSame('', $ref);
+		$this->assertNotSame('-1', $ref);
+	}
+
+	/**
+	 * testProjectCreateWithAutoRef
+	 *
+	 * Ensure that creating a project with ref='auto' triggers the
+	 * numbering module (PROJECT_ADDON) and stores the generated ref.
+	 *
+	 * @return	void
+	 */
+	public function testProjectCreateWithAutoRef()
+	{
+		global $conf,$user,$langs,$db;
+		$conf = $this->savconf;
+		$user = $this->savuser;
+		$langs = $this->savlangs;
+		$db = $this->savdb;
+
+		$localobject = new Project($db);
+		$localobject->initAsSpecimen();
+		$localobject->ref = 'auto';
+		$result = $localobject->create($user);
+
+		print __METHOD__." result=".$result." ref=".$localobject->ref."\n";
+		$this->assertGreaterThan(0, $result);
+		$this->assertNotSame('auto', $localobject->ref);
+		$this->assertNotSame('', $localobject->ref);
+
+		// Cleanup
+		$localobject->delete($user);
+	}
+
+	/**
 	 * testProjectFetch
 	 *
 	 * @param	int		$id		Id of object

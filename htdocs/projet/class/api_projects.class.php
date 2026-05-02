@@ -313,7 +313,12 @@ class Projects extends DolibarrApi
 	/**
 	 * Create project object
 	 *
+	 * To request the active numbering module (PROJECT_ADDON) to generate the
+	 * reference automatically, set "ref" to the string "auto" (or "-1") in the
+	 * request body.
+	 *
 	 * @since	5.0.0	Initial implementation
+	 * @since	24.0.0	Support "auto" / "-1" in the "ref" field to trigger auto-numbering
 	 * @param   array   $request_data   Request data
 	 * @phan-param array<string,mixed> $request_data
 	 * @phpstan-param array<string,mixed> $request_data
