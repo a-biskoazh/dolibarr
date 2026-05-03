@@ -428,6 +428,20 @@ class Task extends CommonObjectLine
 		$this->note_public = trim($this->note_public);
 		$this->note_private = trim($this->note_private);
 
+		// For automatic creation during create action (not used by Dolibarr GUI, can be used by scripts and API).
+		// Same behavior than Project::create() with ref === 'auto'.
+		if ($this->ref === '-1' || $this->ref === 'auto') {
+			$generatedref = $this->getNextNumRef(null);
+			if (!is_string($generatedref) || $generatedref === '' || $generatedref === '-1') {
+				if (empty($this->error)) {
+					$this->error = 'ErrorFailedToGetNextNumRef';
+				}
+				dol_syslog(get_class($this)."::create error generating ref via numbering module: ".$this->error, LOG_ERR);
+				return -1;
+			}
+			$this->ref = $generatedref;
+		}
+
 		if (!empty($this->date_start) && !empty($this->date_end) && $this->date_start > $this->date_end) {
 			$this->errors[] = $langs->trans('StartDateCannotBeAfterEndDate');
 			return -1;
@@ -517,6 +531,46 @@ class Task extends CommonObjectLine
 		}
 	}
 
+	/**
+	 *  Returns the reference to the following non used Task depending on the active numbering module
+	 *  defined into PROJECT_TASK_ADDON
+	 *
+	 *  @param  ?Societe	$soc  	Object thirdparty (unused by default module, kept for signature symmetry)
+	 *  @return string|int<-1,0>	Task free reference (string), 0 or -1 if KO
+	 */
+	public function getNextNumRef($soc = null)
+	{
+		global $langs, $conf;
+		$langs->load("projects");
+
+		$classname = !getDolGlobalString('PROJECT_TASK_ADDON') ? 'mod_task_simple' : getDolGlobalString('PROJECT_TASK_ADDON');
+		$file = $classname.".php";
+
+		// Include file with class
+		$mybool = false;
+		$dirmodels = array_merge(array('/'), (array) $conf->modules_parts['models']);
+		foreach ($dirmodels as $reldir) {
+			$dir = dol_buildpath($reldir."core/modules/project/task/");
+
+			// Load file with numbering class (if found)
+			$mybool = ((bool) @include_once $dir.$file) || $mybool;
+		}
+
+		if (!$mybool) {
+			dol_print_error(null, "Failed to include file ".$file);
+			return '';
+		}
+
+		$obj = new $classname();
+		$numref = $obj->getNextValue($soc, $this);
+
+		if ($numref != "" && $numref != '-1') {
+			return $numref;
+		} else {
+			$this->error = !empty($obj->error) ? $obj->error : '';
+			return -1;
+		}
+	}
 
 	/**
 	 *  Load object in memory from database
