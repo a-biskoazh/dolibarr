@@ -464,6 +464,26 @@ class Project extends CommonObject
 		$this->note_private = dol_substr($this->note_private, 0, 65535);
 		$this->note_public = dol_substr($this->note_public, 0, 65535);
 
+		// For automatic creation during create action (not used by Dolibarr GUI, can be used by scripts and API).
+		// Same behavior than Societe::create() with code_client === 'auto'.
+		if ($this->ref === '-1' || $this->ref === 'auto') {
+			$soc = null;
+			if (!empty($this->socid) && $this->socid > 0) {
+				require_once DOL_DOCUMENT_ROOT.'/societe/class/societe.class.php';
+				$soc = new Societe($this->db);
+				$soc->fetch($this->socid);
+			}
+			$generatedref = $this->getNextNumRef($soc);
+			if (!is_string($generatedref) || $generatedref === '' || $generatedref === '-1') {
+				if (empty($this->error)) {
+					$this->error = 'ErrorFailedToGetNextNumRef';
+				}
+				dol_syslog(get_class($this)."::create error generating ref via numbering module: ".$this->error, LOG_ERR);
+				return -1;
+			}
+			$this->ref = $generatedref;
+		}
+
 		// Check parameters
 		if (!trim($this->ref)) {
 			$this->error = 'ErrorFieldsRequired';
@@ -586,6 +606,47 @@ class Project extends CommonObject
 			return $ret;
 		} else {
 			$this->db->rollback();
+			return -1;
+		}
+	}
+
+	/**
+	 *  Returns the reference to the following non used Project depending on the active numbering module
+	 *  defined into PROJECT_ADDON
+	 *
+	 *  @param  ?Societe	$soc  	Object thirdparty
+	 *  @return string|int<-1,0>	Project free reference (string), 0 or -1 if KO
+	 */
+	public function getNextNumRef($soc = null)
+	{
+		global $langs, $conf;
+		$langs->load("projects");
+
+		$classname = !getDolGlobalString('PROJECT_ADDON') ? 'mod_project_simple' : getDolGlobalString('PROJECT_ADDON');
+		$file = $classname.".php";
+
+		// Include file with class
+		$mybool = false;
+		$dirmodels = array_merge(array('/'), (array) $conf->modules_parts['models']);
+		foreach ($dirmodels as $reldir) {
+			$dir = dol_buildpath($reldir."core/modules/project/");
+
+			// Load file with numbering class (if found)
+			$mybool = ((bool) @include_once $dir.$file) || $mybool;
+		}
+
+		if (!$mybool) {
+			dol_print_error(null, "Failed to include file ".$file);
+			return '';
+		}
+
+		$obj = new $classname();
+		$numref = $obj->getNextValue($soc, $this);
+
+		if ($numref != "" && $numref != '-1') {
+			return $numref;
+		} else {
+			$this->error = !empty($obj->error) ? $obj->error : '';
 			return -1;
 		}
 	}

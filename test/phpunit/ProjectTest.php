@@ -73,6 +73,62 @@ class ProjectTest extends CommonClassTest
 	}
 
 	/**
+	 * testProjectGetNextNumRef
+	 *
+	 * Ensure the numbering module exposed via Project::getNextNumRef()
+	 * returns a valid string reference (mirrors the behaviour expected
+	 * by Project::create() when ref is set to 'auto').
+	 *
+	 * @return	void
+	 */
+	public function testProjectGetNextNumRef()
+	{
+		global $conf,$user,$langs,$db;
+		$conf = $this->savconf;
+		$user = $this->savuser;
+		$langs = $this->savlangs;
+		$db = $this->savdb;
+
+		$localobject = new Project($db);
+		$ref = $localobject->getNextNumRef(null);
+
+		print __METHOD__." ref=".$ref."\n";
+		$this->assertIsString($ref);
+		$this->assertNotSame('', $ref);
+		$this->assertNotSame('-1', $ref);
+	}
+
+	/**
+	 * testProjectCreateWithAutoRef
+	 *
+	 * Ensure that creating a project with ref='auto' triggers the
+	 * numbering module (PROJECT_ADDON) and stores the generated ref.
+	 *
+	 * @return	void
+	 */
+	public function testProjectCreateWithAutoRef()
+	{
+		global $conf,$user,$langs,$db;
+		$conf = $this->savconf;
+		$user = $this->savuser;
+		$langs = $this->savlangs;
+		$db = $this->savdb;
+
+		$localobject = new Project($db);
+		$localobject->initAsSpecimen();
+		$localobject->ref = 'auto';
+		$result = $localobject->create($user);
+
+		print __METHOD__." result=".$result." ref=".$localobject->ref."\n";
+		$this->assertGreaterThan(0, $result);
+		$this->assertNotSame('auto', $localobject->ref);
+		$this->assertNotSame('', $localobject->ref);
+
+		// Cleanup
+		$localobject->delete($user);
+	}
+
+	/**
 	 * testProjectFetch
 	 *
 	 * @param	int		$id		Id of object
@@ -147,6 +203,32 @@ class ProjectTest extends CommonClassTest
 
 
 	/**
+	 * testTaskGetNextNumRef
+	 *
+	 * Ensure the numbering module exposed via Task::getNextNumRef()
+	 * returns a valid string reference (mirrors the behaviour expected
+	 * by Task::create() when ref is set to 'auto').
+	 *
+	 * @return	void
+	 */
+	public function testTaskGetNextNumRef()
+	{
+		global $conf,$user,$langs,$db;
+		$conf = $this->savconf;
+		$user = $this->savuser;
+		$langs = $this->savlangs;
+		$db = $this->savdb;
+
+		$localobject = new Task($db);
+		$ref = $localobject->getNextNumRef(null);
+
+		print __METHOD__." ref=".$ref."\n";
+		$this->assertIsString($ref);
+		$this->assertNotSame('', $ref);
+		$this->assertNotSame('-1', $ref);
+	}
+
+	/**
 	 * testTaskCreate
 	 *
 	 * @param	int		$idproject		ID project
@@ -172,6 +254,41 @@ class ProjectTest extends CommonClassTest
 		$this->assertLessThan($result, 0);
 		print __METHOD__." result=".$result."\n";
 		return $result;
+	}
+
+	/**
+	 * testTaskCreateWithAutoRef
+	 *
+	 * Ensure that creating a task with ref='auto' triggers the numbering
+	 * module (PROJECT_TASK_ADDON) and stores the generated ref.
+	 *
+	 * @param	int		$idproject		ID project (provided by testProjectOther)
+	 * @return	void
+	 *
+	 * @depends	testProjectOther
+	 * The depends says test is run only if previous is ok
+	 */
+	public function testTaskCreateWithAutoRef($idproject)
+	{
+		global $conf,$user,$langs,$db;
+		$conf = $this->savconf;
+		$user = $this->savuser;
+		$langs = $this->savlangs;
+		$db = $this->savdb;
+
+		$localobject = new Task($db);
+		$localobject->initAsSpecimen();
+		$localobject->fk_project = $idproject;
+		$localobject->ref = 'auto';
+		$result = $localobject->create($user);
+
+		print __METHOD__." result=".$result." ref=".$localobject->ref."\n";
+		$this->assertGreaterThan(0, $result);
+		$this->assertNotSame('auto', $localobject->ref);
+		$this->assertNotSame('', $localobject->ref);
+
+		// Cleanup
+		$localobject->delete($user);
 	}
 
 	/**
