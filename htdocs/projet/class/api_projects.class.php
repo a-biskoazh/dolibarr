@@ -396,6 +396,44 @@ class Projects extends DolibarrApi
 
 
 	/**
+	 * Get contacts of given project
+	 *
+	 * Backport de Dolibarr 23.0.0 (getContacts) vers la 20.0 — requis par la
+	 * resolution de role du descriptif Kalpin (ref kalpin-meta#34).
+	 *
+	 * @param	int		$id		Id of project
+	 * @param	string	$type	Type of the contact (optional filter)
+	 * @return	array			Array of project contacts (external + internal)
+	 *
+	 * @url	GET {id}/contacts
+	 *
+	 * @throws RestException
+	 */
+	public function getContacts($id, $type = '')
+	{
+		if (!DolibarrApiAccess::$user->hasRight('projet', 'lire')) {
+			throw new RestException(403);
+		}
+
+		$result = $this->project->fetch($id);
+		if (!$result) {
+			throw new RestException(404, 'Project not found');
+		}
+
+		if (!DolibarrApi::_checkAccessToResource('project', $this->project->id)) {
+			throw new RestException(403, 'Access not allowed for login '.DolibarrApiAccess::$user->login);
+		}
+
+		$contacts = $this->project->liste_contact(-1, 'external', 0, $type);
+		$socpeoples = $this->project->liste_contact(-1, 'internal', 0, $type);
+
+		$contacts = array_merge($contacts, $socpeoples);
+
+		return $contacts;
+	}
+
+
+	/**
 	 * Add a task to given project
 	 *
 	 * @param int   $id             Id of project to update
